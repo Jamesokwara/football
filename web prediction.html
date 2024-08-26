@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Match Prediction</title>
+    <style>
+        body {
+            background-color: gray;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        .match-result {
+            background-color: #444;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Football Match Prediction</h1>
+    <form id="predictionForm">
+        <label for="gameUrl">Enter the URL of the Football Matches (comma separated):</label><br>
+        <input type="text" id="gameUrl" name="gameUrl" placeholder="e.g., url1,url2,...,url10" required><br>
+        <button type="submit">Predict Outcomes</button>
+    </form>
+    <div id="predictionResults"></div>
+
+    <script>
+        document.getElementById("predictionForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const gameUrls = document.getElementById("gameUrl").value.split(','); // Split the URLs by comma
+            const predictionResults = document.getElementById("predictionResults");
+            predictionResults.innerHTML = ''; // Clear previous results
+
+            // Loop through each URL and make predictions
+            for (let index = 0; index < gameUrls.length; index++) {
+                let gameUrl = gameUrls[index].trim();
+
+                // Fetch match data from API (replace this with your actual API call)
+                let gameData = await fetchAndParseData(gameUrl);
+
+                // Run the prediction algorithm
+                let prediction = predictOutcome(gameData);
+
+                // Display the result for each match
+                predictionResults.innerHTML += `
+                    <div class="match-result">
+                        <h2>Match ${index + 1} Prediction Result</h2>
+                        <p><strong>${gameData.homeTeam}</strong> vs <strong>${gameData.awayTeam}</strong></p>
+                        <p>${prediction.result}</p>
+                        <p><strong>${gameData.homeTeam}</strong>: ${prediction.homePoints} points</p>
+                        <p><strong>${gameData.awayTeam}</strong>: ${prediction.awayPoints} points</p>
+                        <p><strong>Factors Contributing to ${gameData.homeTeam}:</strong> ${prediction.homeFactors.join(', ')}</p>
+                        <p><strong>Factors Contributing to ${gameData.awayTeam}:</strong> ${prediction.awayFactors.join(', ')}</p>
+                    </div>
+                `;
+            }
+        });
+
+        async function fetchAndParseData(url) {
+            // Simulated API call for demonstration purposes
+            // Replace this with a real API call using fetch or axios
+            let response = await fetch(url); // Assuming the API returns a JSON object with match data
+            let data = await response.json();
+
+            return {
+                homeTeam: data.homeTeamName,
+                awayTeam: data.awayTeamName,
+                homeHistory: data.homeTeamHistory, // Array of past results, e.g., [1, 1, 0]
+                awayHistory: data.awayTeamHistory, // Array of past results, e.g., [0, 1, 0]
+                homeForm: data.homeTeamForm, // Array of form data, e.g., [1, 1, 1]
+                awayForm: data.awayTeamForm, // Array of form data, e.g., [1, 0, 1]
+                homeLineup: data.homeTeamLineup, // Array of player names
+                awayLineup: data.awayTeamLineup, // Array of player names
+                homePosition: data.homeTeamPosition, // League position
+                awayPosition: data.awayTeamPosition, // League position
+                topScorers: data.topScorers // Array of top scorer names
+            };
+        }
+
+        function predictOutcome(gameData) {
+            let homePoints = 0;
+            let awayPoints = 0;
+            let homeFactors = [];
+            let awayFactors = [];
+
+            // Calculate home team points
+            homePoints += gameData.homeHistory.reduce((a, b) => a + b, 0);
+            homeFactors.push(`History Points: ${gameData.homeHistory.reduce((a, b) => a + b, 0)}`);
+
+            homePoints += gameData.homeForm.reduce((a, b) => a + b, 0);
+            homeFactors.push(`Form Points: ${gameData.homeForm.reduce((a, b) => a + b, 0)}`);
+
+            gameData.homeLineup.forEach(player => {
+                if (gameData.topScorers.includes(player)) {
+                    homePoints += 1;
+                    homeFactors.push(`Scorer Bonus: 1 point`);
+                }
+            });
+
+            homePoints += (21 - gameData.homePosition);
+            homeFactors.push(`Position Bonus: ${21 - gameData.homePosition} points`);
+
+            // Calculate away team points
+            awayPoints += gameData.awayHistory.reduce((a, b) => a + b, 0);
+            awayFactors.push(`History Points: ${gameData.awayHistory.reduce((a, b) => a + b, 0)}`);
+
+            awayPoints += gameData.awayForm.reduce((a, b) => a + b, 0);
+            awayFactors.push(`Form Points: ${gameData.awayForm.reduce((a, b) => a + b, 0)}`);
+
+            gameData.awayLineup.forEach(player => {
+                if (gameData.topScorers.includes(player)) {
+                    awayPoints += 1;
+                    awayFactors.push(`Scorer Bonus: 1 point`);
+                }
+            });
+
+            awayPoints += (21 - gameData.awayPosition);
+            awayFactors.push(`Position Bonus: ${21 - gameData.awayPosition} points`);
+
+            let result;
+            if (homePoints > awayPoints) {
+                result = `${gameData.homeTeam} is likely to win.`;
+            } else if (awayPoints > homePoints) {
+                result = `${gameData.awayTeam} is likely to win.`;
+            } else {
+                result = "The match is likely to end in a draw.";
+            }
+
+            return { result, homePoints, awayPoints, homeFactors, awayFactors };
+        }
+    </script>
+</body>
+</html>
